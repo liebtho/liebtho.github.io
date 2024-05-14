@@ -134,8 +134,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function eraseCells(event) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+        const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
         const col = Math.floor(x / cellSize);
         const row = Math.floor(y / cellSize);
         for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
@@ -151,8 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addCells(event) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+        const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
         const col = Math.floor(x / cellSize);
         const row = Math.floor(y / cellSize);
         for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
@@ -212,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('touchstart', onMouseDown);
     canvas.addEventListener('touchend', onMouseUp);
+    canvas.addEventListener('touchcancel', onMouseUp);
     canvas.addEventListener('mouseleave', function(event) {
         canvas.removeEventListener('mousemove', eraseCells);
         canvas.removeEventListener('mousemove', addCells);
