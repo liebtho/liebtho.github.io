@@ -12,10 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const cellSize = 4; // size of each cell in pixels
     const toolSize = 4; // size of the eraser and adder
-    const width = canvas.width;
-    const height = canvas.height;
-    const cols = Math.floor(width / cellSize);
-    const rows = Math.floor(height / cellSize);
+    let width = canvas.width;
+    let height = canvas.height;
+    let cols = Math.floor(width / cellSize);
+    let rows = Math.floor(height / cellSize);
     let frameRate = 10; // target frame rate in frames per second
     let frameDuration = 1000 / frameRate;
     let lastFrameTime = 0;
@@ -41,7 +41,10 @@ document.addEventListener('DOMContentLoaded', function() {
             [1,0,0,0,0],
             [1,0,0,0,1],
             [1,1,1,1,0]
-        ]
+        ],
+        'blinker': [
+            [1,1,1]
+        ],
     };
 
     function initializeGrid() {
@@ -151,7 +154,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function placePattern(patternName, col, row) {
-        const pattern = patterns[patternName];
+        let pattern = patterns[patternName];
+
+        // Randomly rotate and/or reflect the pattern
+        pattern = transformPattern(pattern);
+
         const patternHeight = pattern.length;
         const patternWidth = pattern[0].length;
         for (let y = 0; y < patternHeight; y++) {
@@ -164,6 +171,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         drawGrid();
+    }
+
+    function transformPattern(pattern) {
+        // Randomly decide how many times to rotate (0 to 3 times)
+        const rotations = Math.floor(Math.random() * 4);
+
+        // Randomly decide whether to reflect horizontally
+        const reflect = Math.random() < 0.5;
+
+        let transformedPattern = pattern;
+
+        // Rotate the pattern
+        for (let i = 0; i < rotations; i++) {
+            transformedPattern = rotatePattern(transformedPattern);
+        }
+
+        // Reflect the pattern if needed
+        if (reflect) {
+            transformedPattern = reflectPattern(transformedPattern);
+        }
+
+        return transformedPattern;
+    }
+
+    function rotatePattern(pattern) {
+        const numRows = pattern.length;
+        const numCols = pattern[0].length;
+        const rotatedPattern = [];
+
+        for (let x = 0; x < numCols; x++) {
+            const newRow = [];
+            for (let y = numRows - 1; y >= 0; y--) {
+                newRow.push(pattern[y][x]);
+            }
+            rotatedPattern.push(newRow);
+        }
+
+        return rotatedPattern;
+    }
+
+    function reflectPattern(pattern) {
+        return pattern.map(row => row.slice().reverse());
     }
 
     function setCursor(mode) {
