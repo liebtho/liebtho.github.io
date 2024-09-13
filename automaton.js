@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let cols, rows;
     const cellSize = 4; // Fixed cell size in pixels
+    const toolSize = 4; // Size of the eraser and adder
     let grid;
 
     const patterns = {
@@ -301,13 +302,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function onMouseUp(event) {
         isMouseDown = false;
-        if (event.button === 2 || (event.touches && event.touches.length > 1)) { // Right mouse button or touch
-            canvas.removeEventListener('mousemove', eraseCells);
-            canvas.removeEventListener('touchmove', eraseCells);
-        } else if (event.button === 0 || (event.touches && event.touches.length === 1)) { // Left mouse button or touch
-            canvas.removeEventListener('mousemove', addCells);
-            canvas.removeEventListener('touchmove', addCells);
-        }
+        canvas.removeEventListener('mousemove', eraseCells);
+        canvas.removeEventListener('touchmove', eraseCells);
+        canvas.removeEventListener('mousemove', addCells);
+        canvas.removeEventListener('touchmove', addCells);
         canvas.style.cursor = 'default';
     }
 
