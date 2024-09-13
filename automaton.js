@@ -16,59 +16,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const height = canvas.height;
     const cols = Math.floor(width / cellSize);
     const rows = Math.floor(height / cellSize);
-    const frameRate = 10; // target frame rate in frames per second
-    const frameDuration = 1000 / frameRate;
+    let frameRate = 10; // target frame rate in frames per second
+    let frameDuration = 1000 / frameRate;
     let lastFrameTime = 0;
 
     let grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
 
+    // Get UI elements
+    const startPauseButton = document.getElementById('startPauseButton');
+    const resetButton = document.getElementById('resetButton');
+    const speedSlider = document.getElementById('speedSlider');
+    const patternSelect = document.getElementById('patternSelect');
+
+    let isPaused = false;
+
+    const patterns = {
+        'glider': [
+            [0,1,0],
+            [0,0,1],
+            [1,1,1]
+        ],
+        'lwss': [
+            [0,1,0,0,1],
+            [1,0,0,0,0],
+            [1,0,0,0,1],
+            [1,1,1,1,0]
+        ]
+    };
+
     function initializeGrid() {
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-                if (x % y == 0 || y % x == 0)
-                    grid[y][x] = Math.random() < 0.5 ? 1 : 0; // Randomly set each cell to 1 (black) or 0 (white)
-                else 
-                    grid[y][x] = 0;
-            }
-        }
-
-        // Add the pattern to the middle of the grid
-        const pattern = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
-        ];
-
-        const patternHeight = pattern.length;
-        const patternWidth = pattern[0].length;
-        const startX = Math.floor((cols - patternWidth) / 2);
-        const startY = Math.floor((rows - patternHeight) / 2);
-
-        for (let y = 0; y < patternHeight; y++) {
-            for (let x = 0; x < patternWidth; x++) {
-                grid[startY + y][startX + x] = pattern[y][x];
-            }
-        }
+        grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
     }
 
     function drawGrid() {
@@ -102,7 +79,6 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let x = 0; x < cols; x++) {
                 const neighbors = countNeighbors(grid, x, y);
                 if (grid[y][x] === 1) {
-                    // Apply Conway's Game of Life rules
                     if (neighbors < 2 || neighbors > 3) {
                         newGrid[y][x] = 0; // Cell dies
                     } else {
@@ -147,6 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
+        drawGrid();
     }
 
     function addCells(event) {
@@ -155,15 +132,38 @@ document.addEventListener('DOMContentLoaded', function() {
         const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
         const col = Math.floor(x / cellSize);
         const row = Math.floor(y / cellSize);
-        for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
-            for (let dx = -Math.floor(toolSize / 2); dx < Math.ceil(toolSize / 2); dx++) {
-                const c = col + dx;
-                const r = row + dy;
+
+        const selectedPattern = patternSelect.value;
+        if (selectedPattern !== 'none' && patterns[selectedPattern]) {
+            placePattern(selectedPattern, col, row);
+        } else {
+            for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
+                for (let dx = -Math.floor(toolSize / 2); dx < Math.ceil(toolSize / 2); dx++) {
+                    const c = col + dx;
+                    const r = row + dy;
+                    if (c >= 0 && c < cols && r >= 0 && r < rows) {
+                        grid[r][c] = 1; // Set the cell to 1 (black)
+                    }
+                }
+            }
+            drawGrid();
+        }
+    }
+
+    function placePattern(patternName, col, row) {
+        const pattern = patterns[patternName];
+        const patternHeight = pattern.length;
+        const patternWidth = pattern[0].length;
+        for (let y = 0; y < patternHeight; y++) {
+            for (let x = 0; x < patternWidth; x++) {
+                const c = col + x - Math.floor(patternWidth / 2);
+                const r = row + y - Math.floor(patternHeight / 2);
                 if (c >= 0 && c < cols && r >= 0 && r < rows) {
-                    grid[r][c] = 1; // Set the cell to 1 (black)
+                    grid[r][c] = pattern[y][x];
                 }
             }
         }
+        drawGrid();
     }
 
     function setCursor(mode) {
@@ -226,7 +226,27 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
     });
 
+    // Event listeners for controls
+    startPauseButton.addEventListener('click', function() {
+        isPaused = !isPaused;
+        startPauseButton.textContent = isPaused ? 'Start' : 'Pause';
+    });
+
+    resetButton.addEventListener('click', function() {
+        initializeGrid();
+        drawGrid();
+    });
+
+    speedSlider.addEventListener('input', function() {
+        frameRate = parseInt(speedSlider.value);
+        frameDuration = 1000 / frameRate;
+    });
+
     function animate(timestamp) {
+        if (isPaused) {
+            requestAnimationFrame(animate);
+            return;
+        }
         if (timestamp - lastFrameTime < frameDuration) {
             requestAnimationFrame(animate);
             return;
