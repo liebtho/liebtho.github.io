@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const patternSelect = document.getElementById('patternSelect');
 
     let isPaused = false;
-    let frameRate = 10; // target frame rate in frames per second
+    let frameRate = 10; // Target frame rate in frames per second
     let frameDuration = 1000 / frameRate;
     let lastFrameTime = 0;
 
