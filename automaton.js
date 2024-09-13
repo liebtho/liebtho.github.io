@@ -2,32 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        width = canvas.width;
-        height = canvas.height;
-        cols = Math.floor(width / cellSize);
-        rows = Math.floor(height / cellSize);
-        initializeGrid();
-        drawGrid();
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    const cellSize = 4; // size of each cell in pixels
-    const toolSize = 4; // size of the eraser and adder
-    let width = canvas.width;
-    let height = canvas.height;
-    let cols = Math.floor(width / cellSize);
-    let rows = Math.floor(height / cellSize);
-    let frameRate = 10; // target frame rate in frames per second
-    let frameDuration = 1000 / frameRate;
-    let lastFrameTime = 0;
-
-    let grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
-
     // Get UI elements
     const startPauseButton = document.getElementById('startPauseButton');
     const resetButton = document.getElementById('resetButton');
@@ -35,6 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const patternSelect = document.getElementById('patternSelect');
 
     let isPaused = false;
+    let frameRate = 10; // target frame rate in frames per second
+    let frameDuration = 1000 / frameRate;
+    let lastFrameTime = 0;
+
+    let cols, rows;
+    const cellSize = 4; // Fixed cell size in pixels
+    let grid;
 
     const patterns = {
         'glider': [
@@ -59,13 +40,38 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPatternTransformed = null;
 
     function initializeGrid() {
-        grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
+        cols = Math.floor(canvas.width / cellSize);
+        rows = Math.floor(canvas.height / cellSize);
+
+        if (!grid) {
+            // If grid doesn't exist, create a new one
+            grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
+        } else {
+            // If grid exists, adjust its size and preserve existing data
+            const newGrid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
+            for (let y = 0; y < Math.min(rows, grid.length); y++) {
+                for (let x = 0; x < Math.min(cols, grid[0].length); x++) {
+                    newGrid[y][x] = grid[y][x];
+                }
+            }
+            grid = newGrid;
+        }
     }
 
-    function drawGrid() {
-        ctx.clearRect(0, 0, width, height); // Clear the canvas
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initializeGrid();
+        drawGrid();
+    }
 
-        const imageData = ctx.createImageData(width, height);
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
         const data = imageData.data;
 
         for (let y = 0; y < rows; y++) {
@@ -73,7 +79,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const color = grid[y][x] * 255;
                 for (let dy = 0; dy < cellSize; dy++) {
                     for (let dx = 0; dx < cellSize; dx++) {
-                        const index = 4 * ((y * cellSize + dy) * width + (x * cellSize + dx));
+                        const px = x * cellSize + dx;
+                        const py = y * cellSize + dy;
+                        if (px >= canvas.width || py >= canvas.height) continue;
+                        const index = 4 * (py * canvas.width + px);
                         data[index] = color;     // Red
                         data[index + 1] = color; // Green
                         data[index + 2] = color; // Blue
@@ -119,9 +128,11 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 if (dx === 0 && dy === 0) continue; // Skip the cell itself
-                const newX = (x + dx + cols) % cols;
-                const newY = (y + dy + rows) % rows;
-                count += grid[newY][newX];
+                const newX = x + dx;
+                const newY = y + dy;
+                if (newX >= 0 && newX < cols && newY >= 0 && newY < rows) {
+                    count += grid[newY][newX];
+                }
             }
         }
         return count;
@@ -302,7 +313,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function onMouseMove(event) {
         updateMousePosition(event);
-        drawGrid();
+        if (!isMouseDown) {
+            drawGrid();
+        }
     }
 
     canvas.addEventListener('mousedown', onMouseDown);
@@ -343,6 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     resetButton.addEventListener('click', function() {
+        grid = null;
         initializeGrid();
         drawGrid();
     });
@@ -374,6 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
         requestAnimationFrame(animate);
     }
 
+    // Initialize grid
     initializeGrid();
     drawGrid();
     requestAnimationFrame(animate);
