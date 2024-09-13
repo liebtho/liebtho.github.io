@@ -5,6 +5,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        width = canvas.width;
+        height = canvas.height;
+        cols = Math.floor(width / cellSize);
+        rows = Math.floor(height / cellSize);
+        initializeGrid();
+        drawGrid();
     }
 
     window.addEventListener('resize', resizeCanvas);
@@ -41,11 +47,16 @@ document.addEventListener('DOMContentLoaded', function() {
             [1,0,0,0,0],
             [1,0,0,0,1],
             [1,1,1,1,0]
-        ],
-        'blinker': [
-            [1,1,1]
-        ],
+        ]
     };
+
+    let mouseX = 0;
+    let mouseY = 0;
+    let mouseCol = 0;
+    let mouseRow = 0;
+    let mouseOverCanvas = false;
+    let isMouseDown = false;
+    let currentPatternTransformed = null;
 
     function initializeGrid() {
         grid = new Array(rows).fill(null).map(() => new Array(cols).fill(0));
@@ -73,6 +84,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         ctx.putImageData(imageData, 0, 0);
+
+        // Draw pattern preview
+        if (mouseOverCanvas && !isMouseDown && patternSelect.value !== 'none' && currentPatternTransformed) {
+            drawPatternPreview();
+        }
     }
 
     function getNextGeneration() {
@@ -112,11 +128,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function eraseCells(event) {
-        const rect = canvas.getBoundingClientRect();
-        const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-        const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
-        const col = Math.floor(x / cellSize);
-        const row = Math.floor(y / cellSize);
+        updateMousePosition(event);
+        const col = mouseCol;
+        const row = mouseRow;
         for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
             for (let dx = -Math.floor(toolSize / 2); dx < Math.ceil(toolSize / 2); dx++) {
                 const c = col + dx;
@@ -130,15 +144,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function addCells(event) {
-        const rect = canvas.getBoundingClientRect();
-        const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-        const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
-        const col = Math.floor(x / cellSize);
-        const row = Math.floor(y / cellSize);
+        updateMousePosition(event);
+        const col = mouseCol;
+        const row = mouseRow;
 
         const selectedPattern = patternSelect.value;
-        if (selectedPattern !== 'none' && patterns[selectedPattern]) {
-            placePattern(selectedPattern, col, row);
+        if (selectedPattern !== 'none' && currentPatternTransformed) {
+            placePattern(currentPatternTransformed, col, row);
+            // Generate a new transformation for next placement
+            currentPatternTransformed = transformPattern(patterns[selectedPattern]);
         } else {
             for (let dy = -Math.floor(toolSize / 2); dy < Math.ceil(toolSize / 2); dy++) {
                 for (let dx = -Math.floor(toolSize / 2); dx < Math.ceil(toolSize / 2); dx++) {
@@ -153,12 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function placePattern(patternName, col, row) {
-        let pattern = patterns[patternName];
-
-        // Randomly rotate and/or reflect the pattern
-        pattern = transformPattern(pattern);
-
+    function placePattern(pattern, col, row) {
         const patternHeight = pattern.length;
         const patternWidth = pattern[0].length;
         for (let y = 0; y < patternHeight; y++) {
@@ -180,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Randomly decide whether to reflect horizontally
         const reflect = Math.random() < 0.5;
 
-        let transformedPattern = pattern;
+        let transformedPattern = pattern.map(row => row.slice());
 
         // Rotate the pattern
         for (let i = 0; i < rotations; i++) {
@@ -215,6 +224,38 @@ document.addEventListener('DOMContentLoaded', function() {
         return pattern.map(row => row.slice().reverse());
     }
 
+    function drawPatternPreview() {
+        const pattern = currentPatternTransformed;
+        const patternHeight = pattern.length;
+        const patternWidth = pattern[0].length;
+
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+
+        for (let y = 0; y < patternHeight; y++) {
+            for (let x = 0; x < patternWidth; x++) {
+                const c = mouseCol + x - Math.floor(patternWidth / 2);
+                const r = mouseRow + y - Math.floor(patternHeight / 2);
+                if (c >= 0 && c < cols && r >= 0 && r < rows) {
+                    if (pattern[y][x]) {
+                        ctx.fillStyle = 'green';
+                        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+
+        ctx.restore();
+    }
+
+    function updateMousePosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+        mouseY = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+        mouseCol = Math.floor(mouseX / cellSize);
+        mouseRow = Math.floor(mouseY / cellSize);
+    }
+
     function setCursor(mode) {
         const cursorCanvas = document.createElement('canvas');
         cursorCanvas.width = toolSize * cellSize;
@@ -233,6 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function onMouseDown(event) {
+        isMouseDown = true;
         if (event.button === 2 || (event.touches && event.touches.length > 1)) { // Right mouse button or touch
             eraseCells(event);
             canvas.addEventListener('mousemove', eraseCells);
@@ -247,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function onMouseUp(event) {
+        isMouseDown = false;
         if (event.button === 2 || (event.touches && event.touches.length > 1)) { // Right mouse button or touch
             canvas.removeEventListener('mousemove', eraseCells);
             canvas.removeEventListener('touchmove', eraseCells);
@@ -257,18 +300,36 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.style.cursor = 'default';
     }
 
+    function onMouseMove(event) {
+        updateMousePosition(event);
+        drawGrid();
+    }
+
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('touchstart', onMouseDown);
-    canvas.addEventListener('touchend', onMouseUp);
-    canvas.addEventListener('touchcancel', onMouseUp);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseenter', function() {
+        mouseOverCanvas = true;
+        // Generate a new transformation when mouse enters canvas
+        const selectedPattern = patternSelect.value;
+        if (selectedPattern !== 'none' && patterns[selectedPattern]) {
+            currentPatternTransformed = transformPattern(patterns[selectedPattern]);
+        }
+    });
     canvas.addEventListener('mouseleave', function(event) {
+        mouseOverCanvas = false;
+        isMouseDown = false;
         canvas.removeEventListener('mousemove', eraseCells);
         canvas.removeEventListener('mousemove', addCells);
         canvas.removeEventListener('touchmove', eraseCells);
         canvas.removeEventListener('touchmove', addCells);
         canvas.style.cursor = 'default';
+        drawGrid();
     });
+    canvas.addEventListener('touchstart', onMouseDown);
+    canvas.addEventListener('touchend', onMouseUp);
+    canvas.addEventListener('touchcancel', onMouseUp);
+    canvas.addEventListener('touchmove', onMouseMove);
 
     // Prevent context menu on right-click
     canvas.addEventListener('contextmenu', function(event) {
@@ -291,20 +352,25 @@ document.addEventListener('DOMContentLoaded', function() {
         frameDuration = 1000 / frameRate;
     });
 
+    patternSelect.addEventListener('change', function() {
+        const selectedPattern = patternSelect.value;
+        if (selectedPattern !== 'none' && patterns[selectedPattern]) {
+            currentPatternTransformed = transformPattern(patterns[selectedPattern]);
+        } else {
+            currentPatternTransformed = null;
+        }
+    });
+
     function animate(timestamp) {
-        if (isPaused) {
-            requestAnimationFrame(animate);
-            return;
+        if (!isPaused) {
+            if (timestamp - lastFrameTime >= frameDuration) {
+                lastFrameTime = timestamp;
+                getNextGeneration();
+                drawGrid();
+            }
+        } else {
+            drawGrid(); // Still need to draw the grid for the preview
         }
-        if (timestamp - lastFrameTime < frameDuration) {
-            requestAnimationFrame(animate);
-            return;
-        }
-        lastFrameTime = timestamp;
-
-        getNextGeneration();
-        drawGrid();
-
         requestAnimationFrame(animate);
     }
 
